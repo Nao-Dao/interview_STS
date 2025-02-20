@@ -4,8 +4,11 @@ import { useSystemConfig } from '../store/Config';
 import { AudioPlayer } from '../util/audio/AudioPlayer';
 import { BaseAudioRecord } from '../util/audio/AudioRecord';
 import { VisualAudio } from '../util/audio/VisualAudio';
+import { useRoute } from 'vue-router';
 
 const config = useSystemConfig();
+const route = useRoute();
+const cid = route.params.cid as string;
 
 let ap: AudioPlayer;
 let ar: BaseAudioRecord;
@@ -18,7 +21,9 @@ const initMethod = () => {
     ar = new BaseAudioRecord();
     ar.addEventListener("record", async (blob) => {
         const form = new FormData();
-        form.append("files", new File([blob], "key", { type: "audio/webm" }))
+        form.append("files", new File([blob], "key", { type: "audio/webm" }));
+        form.append("cid", cid);
+        form.append("lang", "zh");
 
         fetch(config.getURL("/api/asr"), {
             method: "POST",
@@ -26,7 +31,7 @@ const initMethod = () => {
         })
         .then(r => r.text())
         .then(_ => {
-            ap.load(config.getURL(`/api/tts`))
+            ap.load(config.getURL(`/api/tts?cid=${cid}`))
             ap.start();
         });
     });
@@ -56,7 +61,7 @@ const click = () => {
     if (!init.value) {
         init.value = true;
         initMethod();
-        ap.load(config.getURL(`/api/tts`));
+        ap.load(config.getURL(`/api/tts?cid=${cid}`));
         ap.start();
     } else {
         if (!UserSpeech.value) return;

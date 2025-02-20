@@ -20,6 +20,10 @@ async def asr(files: Annotated[List[bytes], fastapi.File(description="wav or mp3
               cid: Annotated[int, fastapi.Form()] = None):
     resp = sensor(webm2wav(files[0]), lang)
     if len(resp.text):
-        put_llm(resp.text, cid)
+        await put_llm(resp.text, cid)
     return fastapi.responses.JSONResponse({})
 
+from ..utils.snowflake import generate_snowflake_id
+@router.get("/api/id")
+async def get_id():
+    return fastapi.Response(str(generate_snowflake_id()))

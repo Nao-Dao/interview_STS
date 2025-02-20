@@ -18,7 +18,7 @@ cosyvoice: CosyVoice2 = load()
 def stream_io(tts_text: Generator[str]):
     yield wave_header_chunk(sample_rate = cosyvoice.sample_rate)
     for text in tts_text:
-        model_output = inference_instruct(text)
+        model_output = inference_zero_shot(text)
         for item in model_output:
             yield pack_audio(
                 BytesIO(),
@@ -27,17 +27,10 @@ def stream_io(tts_text: Generator[str]):
                 "raw"
             ).getvalue()
 
-prompt_speech_16k = load_wav("model_pretrained/ssy_short.wav", 16000)
 ModelOutput = Generator[dict[str, torch.Tensor], None, None]
 def inference_zero_shot(tts_text: str) -> ModelOutput:
     return cosyvoice.inference_sft(
         tts_text, spk_id = "中文女",
         stream = True, text_frontend = False
-    )
-
-def inference_instruct(tts_text: str) -> ModelOutput:
-    return cosyvoice.inference_instruct2(
-        tts_text, "用爱慕且温柔的语气说话", 
-        prompt_speech_16k, stream=True, text_frontend=False
     )
 
