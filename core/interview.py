@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Callable, List, Generator
 
 from .utils.snowflake import generate_snowflake_id
-from .llm.interface import ChatResponse, ChatMessage
+from .llm import ChatResponse, ChatMessage
 
 logger = logging.getLogger(__name__)
 
