@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 
 router = fastapi.APIRouter(prefix = "/api")
 
+from core.utils.cache import cache as CacheUtils
 from core.llm.chatgpt import chat
 from core.utils.snowflake import generate_snowflake_id
 from core.interview import InterviewManager
@@ -48,5 +49,14 @@ def generate_msg(cid: int = None):
         im.add_chat(resp.content, "assistant")
         im.save_data(im.data)
 
-
-
+def save_audio(cid: int = None, audio: bytes = None):
+    if not isinstance(cid, int):
+       cid = int(cid)
+    if cid is None:
+        cid = generate_snowflake_id()
+    if cid not in cache:
+        cache[cid] = InterviewManager(cid)
+    im = cache[cid]
+    path = CacheUtils.get_path(CacheUtils.save(audio))
+    im.data.history[-1].audio_path.append(path)
+    im.save_data(im.data)
