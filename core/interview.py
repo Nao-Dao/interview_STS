@@ -10,6 +10,9 @@ from .llm import ChatResponse, ChatMessage
 
 logger = logging.getLogger(__name__)
 
+class AudioMeaasge(ChatMessage):
+    audio_path: List[str] = []
+
 class InterviewData(BaseModel):
     # 使用雪花算法生成的id
     id: int
@@ -18,7 +21,7 @@ class InterviewData(BaseModel):
     # 访谈的议题, 需要从议题里面选择
     questions: list[str]
     # 聊天历史记录
-    history: list[ChatMessage]
+    history: list[AudioMeaasge]
     # 与llm聊天的记录
     # 与聊天的历史记录不同，这个需要限制最大值
     # 这里默认不超过5000个字
@@ -78,26 +81,25 @@ class InterviewManager():
             self.data = self.load_data(id)
 
     def add_chat(self, message: str, role: str):
-        msg = ChatMessage(role = role, content = message)
-        if len(self.data.history) and msg.role == self.data.history[-1].role:
+        if len(self.data.history) and role == self.data.history[-1].role:
             # 角色一致, 意味着是补充, 不分段
             self.data.history[-1].content = "%s,%s" % (
                 self.data.history[-1].content,
-                msg.content
+                message
             )
         else:
             # 添加聊天记录
-            self.data.history.append(msg)
+            self.data.history.append(AudioMeaasge(role = role, content = message))
 
-        if len(self.data.messages) and msg.role == self.data.messages[-1].role:
+        if len(self.data.messages) and role == self.data.messages[-1].role:
             # 角色一致, 意味着是补充, 不分段
             self.data.messages[-1].content = "%s,%s" % (
                 self.data.messages[-1].content,
-                msg.content
+                message
             )
         else:
             # 添加聊天记录
-            self.data.messages.append(msg)
+            self.data.messages.append(ChatMessage(role = role, content = message))
 
         # 保存记录
         self.save_data(self.data)
