@@ -6,3 +6,4 @@ runtime
 data/interview
 
 .env
+*.tar.gz
