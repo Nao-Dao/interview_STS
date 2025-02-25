@@ -12,13 +12,18 @@ client = openai.OpenAI(
 )
 
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
-    response = client.chat.completions.create(
-        model = os.getenv("OPENAI_MODEL", None),
-        messages = messages,
-        max_tokens = 8192,
-        temperature = 0.7,
-        stream = True
-    )
+    while True:
+        try:
+            response = client.chat.completions.create(
+                model = os.getenv("OPENAI_MODEL", None),
+                messages = messages,
+                max_tokens = 8192,
+                temperature = 0.7,
+                stream = True
+            )
+            break
+        except Exception as e:
+            continue
 
     # 因为用流式处理，需要进行断句。当一句完成后再返回。
     # 最后将整个句子保存

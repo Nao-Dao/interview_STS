@@ -1,5 +1,6 @@
 import os
 import fastapi
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 load_dotenv()
@@ -19,7 +20,13 @@ for m in ENABLE:
     module = __import__("core.router.{}".format(m), globals(), locals(), ["router"], 0)
     app.include_router(module.router)
 
+@app.get("/", response_class = HTMLResponse)
+async def read_index():
+    with open("ui/dist/index.html", "rb") as f:
+        b = f.read()
+    return HTMLResponse(content = b)
 app.mount("/", StaticFiles(directory="ui/dist"), name = "static")
+
 if __name__ == "__main__":
     import time
     import threading
@@ -32,7 +39,8 @@ if __name__ == "__main__":
             for key, item in cache.items():
                 print("check: %s" % str(key))
                 item.check_llm_message(chat)
-                item.judge(chat)
+                if item.judge(chat):
+                    item.next()
             time.sleep(30) # 30s 执行一次
     thread = threading.Thread(target=timeHandler, daemon=True)
     thread.start()
