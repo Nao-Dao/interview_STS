@@ -4,6 +4,8 @@ model_pretrained
 runtime
 
 data/interview
+data/log
 
+.vscode
 .env
 *.tar.gz
