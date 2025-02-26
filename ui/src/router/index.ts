@@ -14,6 +14,11 @@ const router = createRouter({
       path: "/manual/:cid",
       name: "manual",
       component: () => import("../view/manual.vue")
+    },
+    {
+      path: "/auto/:cid",
+      name: "auto",
+      component: () => import("../view/auto.vue")
     }
   ]
 });

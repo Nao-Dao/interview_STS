@@ -29,7 +29,7 @@ async def asr(files: Annotated[List[bytes], fastapi.File(description="wav or mp3
     b = webm2wav(files[0])
     resp = sensor(b, lang)
     if len(resp.text):
-        await put_llm(resp.text, cid)
+        put_llm(resp.text, cid)
         save_audio(cid, b)
     return fastapi.responses.JSONResponse({})
 

@@ -13,7 +13,7 @@ from core.interview import InterviewManager
 cache: dict[int, InterviewManager] = {}
 
 @router.put("/llm/interview")
-async def put_llm(msg: Annotated[str, fastapi.Form()],
+def put_llm(msg: Annotated[str, fastapi.Form()],
                   cid: Annotated[int, fastapi.Form()] = None):
     if not isinstance(cid, int):
        cid = int(cid) 
