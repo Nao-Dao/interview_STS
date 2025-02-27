@@ -1,12 +1,8 @@
 from  __future__ import annotations
 import fastapi
 from typing import Annotated, List
-router = fastapi.APIRouter()
 
-"""
-LLM聊天管理
-"""
-from .interview import put_llm, generate_msg, save_audio
+from . import put_llm, generate_msg, save_audio
 from ..model.cosy import stream_io
 def sts_method1(cid):
     b = b""
@@ -16,6 +12,7 @@ def sts_method1(cid):
     save_audio(cid, b)
     yield b""
 
+router = fastapi.APIRouter()
 @router.get("/api/tts")
 async def tts(cid: int):
     return fastapi.responses.StreamingResponse(sts_method1(cid), media_type="audio/wav")

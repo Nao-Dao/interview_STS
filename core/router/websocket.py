@@ -1,17 +1,17 @@
 import base64
 import fastapi
 import asyncio
+import noisereduce
 import numpy as np
 from pydantic import BaseModel
 from typing import Literal
 import logging
 logger = logging.getLogger(__name__)
 
+from ..utils.audio import wave_header_chunk
 from ..model.sensor import vad_array, asr_array
-"""
-LLM聊天管理
-"""
-from .interview import put_llm, generate_msg, save_audio
+
+from . import put_llm, generate_msg, save_audio
 from ..model.cosy import stream_io
 def sts_method1(cid):
     b = b""
@@ -53,26 +53,31 @@ class WebsocketClient:
     def _tran_ms_to_audioframe(self, ms: int):
         return int(ms / 1000 * self.sampleRate)
 
-    def load_audio_buffer(self, blob):
+    def _load_audio_buffer(self, blob):
         array = np.frombuffer(blob, dtype=np.int16).astype(np.float32)
-        self.audioBuffer = np.concatenate([self.audioBuffer, array], dtype = np.float32, axis = 0)
+        array = noisereduce.reduce_noise(array, self.sampleRate, sigmoid_slope_nonstationary=True)
+        if array.std() > 300:
+            # 如果音频片段达到了要求
+            self.audioBuffer = np.concatenate([self.audioBuffer, array], dtype = np.float32, axis = 0)
+            return True
+        else:
+            # 插入空白音频片段，避免问题
+            self.audioBuffer = np.concatenate([self.audioBuffer, np.zeros(array.shape[0], dtype=np.float32)], dtype = np.float32, axis = 0)
+            return False
 
     def asr(self, item: list[int]):
         [startPos, stopPos] = [self._tran_ms_to_audioframe(item[0]), self._tran_ms_to_audioframe(item[1])]
         audioBuffer = self.audioBuffer[startPos:stopPos]
-        if audioBuffer.mean() < 0:
-            return False
 
-        audioLen = audioBuffer.shape[0]
-        audioMinLen = int(self.sampleRate * self.min_audio_frame_len)
-        audioPad = audioMinLen - audioLen
+        audioPad = int(self.sampleRate * self.min_audio_frame_len) - audioBuffer.shape[0]
         if audioPad > 0:
             audioBuffer = np.concatenate([audioBuffer, np.zeros(audioPad, dtype=np.float32)], axis = 0, dtype=np.float32)
 
         asr = asr_array(audioBuffer, sampleRate=self.sampleRate, lang="zh")
+        logger.debug("asr result: %s" % (asr.clean_text))
         if len(asr.clean_text):
-            logger.debug("asr result: %s" % (asr.clean_text))
             put_llm(asr.clean_text, self.cid)
+            save_audio(self.cid, wave_header_chunk(sample_rate=self.sampleRate) + audioBuffer.astype(np.int16).tobytes())
             return True
         return False
 
@@ -111,8 +116,8 @@ class WebsocketClient:
             # 还未初始化
             return
         elif wm.action == "record":
-            blob = base64.b64decode(wm.param["audio"])
-            self.load_audio_buffer(blob)
+            if not self._load_audio_buffer(base64.b64decode(wm.param["audio"])):
+                await self.ws.send_text("asr:toolow")
             await self.valid()
 
     async def _worker(self):
