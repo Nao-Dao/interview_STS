@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Annotated
+import time
+import threading
 
 from core.utils.cache import cache as CacheUtils
 from core.llm.chatgpt import chat
@@ -7,6 +8,20 @@ from core.utils.snowflake import generate_snowflake_id
 from core.interview import InterviewManager
 
 cache: dict[int, InterviewManager] = {}
+
+from ..llm.chatgpt import chat
+def timeHandler():
+    # 定时任务
+    while True:
+        for key, item in cache.items():
+            print("check: %s" % str(key))
+            item.check_llm_message(chat)
+            if item.judge(chat):
+                item.next()
+        time.sleep(30) # 30s 执行一次
+thread = threading.Thread(target=timeHandler, daemon=True)
+thread.start()
+
 
 def _get_im_instance(cid: int = None):
     if cid is None:

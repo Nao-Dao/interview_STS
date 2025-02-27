@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import json
+import time
 import logging
 from pydantic import BaseModel
 from typing import Callable, List, Generator
@@ -71,6 +72,11 @@ class InterviewManager():
 """
 
     def __init__(self, id: int = None):
+        # 聊天记录的修改时间
+        self.last_activate_time = time.time_ns()
+        # 检测记录的最后一次聊天记录时间
+        self.last_check_time = self.last_activate_time
+
         if id is None:
             id = generate_snowflake_id()
 
@@ -81,6 +87,7 @@ class InterviewManager():
             self.data = self.load_data(id)
 
     def add_chat(self, message: str, role: str):
+        self.last_activate_time = time.time_ns()
         if len(self.data.history) and role == self.data.history[-1].role:
             # 角色一致, 意味着是补充, 不分段
             self.data.history[-1].content = "%s,%s" % (
@@ -127,6 +134,10 @@ class InterviewManager():
         """检查llm消息是否达到上限
         注意，该方法应该定时调用
         """
+        if self.last_check_time == self.last_activate_time:
+            # 在最后一次检测之前，记录没有更改，无需检测
+            return
+        self.last_check_time = self.last_activate_time
         messages = ""
         for m in self.data.messages:
             if m.role == "user":

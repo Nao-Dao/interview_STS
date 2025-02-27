@@ -28,22 +28,5 @@ async def read_index():
 app.mount("/", StaticFiles(directory="ui/dist"), name = "static")
 
 if __name__ == "__main__":
-    import time
-    import threading
-
-    from core.llm.chatgpt import chat
-    from core.router.interview import cache
-    def timeHandler():
-        # 定时任务
-        while True:
-            for key, item in cache.items():
-                print("check: %s" % str(key))
-                item.check_llm_message(chat)
-                if item.judge(chat):
-                    item.next()
-            time.sleep(30) # 30s 执行一次
-    thread = threading.Thread(target=timeHandler, daemon=True)
-    thread.start()
-
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
