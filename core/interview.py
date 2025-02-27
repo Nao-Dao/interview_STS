@@ -134,10 +134,6 @@ class InterviewManager():
         """检查llm消息是否达到上限
         注意，该方法应该定时调用
         """
-        if self.last_check_time == self.last_activate_time:
-            # 在最后一次检测之前，记录没有更改，无需检测
-            return
-        self.last_check_time = self.last_activate_time
         messages = ""
         for m in self.data.messages:
             if m.role == "user":
@@ -178,6 +174,11 @@ class InterviewManager():
         """
         判断议题是否结束
         """
+        if self.last_check_time == self.last_activate_time or \
+            self.data.progress >= 0:
+            # 在最后一次检测之前，记录没有更改，无需检测
+            return
+        self.last_check_time = self.last_activate_time
         messages = ""
         for m in self.data.messages:
             if m.role == "user":

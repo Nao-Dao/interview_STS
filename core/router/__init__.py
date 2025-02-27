@@ -9,7 +9,7 @@ from core.interview import InterviewManager
 
 cache: dict[int, InterviewManager] = {}
 
-from ..llm.chatgpt import chat
+from ..llm.ollama import chat
 def timeHandler():
     # 定时任务
     while True:
