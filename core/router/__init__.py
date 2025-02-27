@@ -3,7 +3,7 @@ import time
 import threading
 
 from core.utils.cache import cache as CacheUtils
-from core.llm.chatgpt import chat
+from core.llm.ollama import chat
 from core.utils.snowflake import generate_snowflake_id
 from core.interview import InterviewManager
 

@@ -8,8 +8,8 @@ from typing import Generator
 from . import ChatResponse, ChatMessage
 
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
-    resp = requests.post("http://127.0.0.1:11434/api/chat", {
-        "model": "EntropyYue/chatglm3:6b",
+    resp = requests.post("http://127.0.0.1:11434/api/chat", json = {
+        "model": "qwen2.5:3b",
         "messages": messages
     }, stream=True)
 
@@ -17,10 +17,10 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
     # 最后将整个句子保存
     global_content = []
     content = []
-    for chunk in resp:
+    for chunk in resp.iter_content(1024):
         data = json.loads(chunk.decode())
         c = data['message']['content']
-        if c is None:
+        if c is None or c == "":
             continue
         global_content.append(c)
         yield ChatResponse(type = "char", content = c)
