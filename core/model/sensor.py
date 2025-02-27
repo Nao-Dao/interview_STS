@@ -92,4 +92,4 @@ VADParam = dict[str, float]
 def vad_array(array: np.ndarray, sampleRate: int) -> Tuple[VADItem, VADParam]:
     [items, param] = model.vad_model.inference(data_in = [array], key = ["temp"], fs = sampleRate, **model.vad_kwargs)
     torch.cuda.empty_cache()
-    return items, param
+    return items[0]["value"], param

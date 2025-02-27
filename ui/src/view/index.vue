@@ -14,15 +14,17 @@ fetch(config.getURL("/api/id"))
     });
 
 const router = useRouter();
-const start = () => {
-    router.push(`/manual/${cid.value}`);
-}
 </script>
 
 <template>
     <div style="text-align: center;">
         <div>{{ cid }}</div>
-        <ElButton :disabled="cid < 0" @click="start">继续</ElButton>
+        <template v-if="cid > 0">
+            <el-card class="login-box">
+                <el-button class="form-button" @click="router.push(`/manual/${cid}`);">manual</el-button>
+                <el-button class="form-button" @click="router.push(`/auto/${cid}`);">auto</el-button>
+            </el-card>
+        </template>
     </div>
 </template>
 
