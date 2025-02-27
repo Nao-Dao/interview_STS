@@ -7,9 +7,12 @@ from typing import Generator
 
 from . import ChatResponse, ChatMessage
 
+URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
+MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
-    resp = requests.post("http://127.0.0.1:11434/api/chat", json = {
-        "model": "qwen2.5:3b",
+    resp = requests.post(f"{URL}/api/chat", json = {
+        "model": MODEL,
         "messages": messages
     }, stream=True)
 

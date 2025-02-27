@@ -4,13 +4,17 @@
     "formatters": {
       "basic": {
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+      },
+      "uvicorn": {
+        "()": "uvicorn.logging.DefaultFormatter",
+        "fmt": "%(levelprefix)s %(message)s"
       }
     },
     "handlers": {
       "console": {
         "class": "logging.StreamHandler",
         "level": "INFO",
-        "formatter": "basic",
+        "formatter": "uvicorn",
         "stream": "ext://sys.stdout"
       },
       "debug_file_handler": {

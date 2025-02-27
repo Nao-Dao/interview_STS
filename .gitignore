@@ -9,3 +9,4 @@ data/log
 .vscode
 .env
 *.tar.gz
+*.ipynb

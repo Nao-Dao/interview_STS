@@ -1,15 +1,17 @@
 from __future__ import annotations
+import os
 import time
 import threading
 
 from core.utils.cache import cache as CacheUtils
-from core.llm.ollama import chat
 from core.utils.snowflake import generate_snowflake_id
 from core.interview import InterviewManager
 
 cache: dict[int, InterviewManager] = {}
 
-from ..llm.ollama import chat
+module = __import__(f"core.llm.{os.getenv('LLM', 'chatgpt')}", globals(), locals(), ["chat"])
+chat = module.chat
+
 def timeHandler():
     # 定时任务
     while True:
