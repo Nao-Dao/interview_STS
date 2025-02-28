@@ -1,15 +1,27 @@
+from __future__ import annotations
 import os
 import sys
 import json
 from io import BytesIO
 from typing import Generator
-
 sys.path.append("./model/GPT_SoVITS")
+from logging import getLogger
+logger = getLogger(__name__)
+
 from model.GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
 from model.GPT_SoVITS.TTS_infer_pack.text_segmentation_method import get_method_names as get_cut_method_names
 
-from ..utils.cache import cache
 from ..utils.audio import wave_header_chunk, pack_audio
+
+def stream_io(tts_text: Generator[str]):
+    logger.debug("start generate tts")
+    for i1, text in enumerate(tts_text):
+        model_output = tts_handle(TTS_Request(text=text, text_lang="zh", streaming_mode=True).model_dump())
+        for i2, item in enumerate(model_output):
+            if i1 != 0 and i2 == 0:
+                continue
+            logger.debug("generate tts...")
+            yield item
 
 tts_config = TTS_Config(os.getenv("GPT_SoVITS", "model_pretrained/GPT_SoVITS/tts_infer.yaml"))
 tts_pipeline = TTS(tts_config)
@@ -40,7 +52,7 @@ def check_params(req:dict):
         raise ValueError(f"text_split_method:{text_split_method} is not supported")
     return None
 
-async def tts_handle(req:dict):
+def tts_handle(req:dict):
     streaming_mode = req.get("streaming_mode", False)
     return_fragment = req.get("return_fragment", False)
     media_type = req.get("media_type", "wav")

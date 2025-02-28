@@ -3,7 +3,7 @@ import fastapi
 from typing import Annotated, List
 
 from . import put_llm, generate_msg, save_audio
-from ..model.cosy import stream_io
+from ..model.sovits import stream_io
 def sts_method1(cid):
     b = b""
     for blob in stream_io(generate_msg(cid)):

@@ -12,7 +12,7 @@ from ..utils.audio import wave_header_chunk
 from ..model.sensor import vad_array, asr_array
 
 from . import put_llm, generate_msg, save_audio
-from ..model.cosy import stream_io
+from ..model.sovits import stream_io
 def sts_method1(cid):
     b = b""
     for blob in stream_io(generate_msg(cid)):
@@ -27,7 +27,6 @@ async def ws(websocket: fastapi.WebSocket):
     await websocket.accept()
     await WebsocketClient(websocket).run()
 
-from ..model.cosy import stream_io
 @router.get("/api/tts/stream")
 async def tts(cid: int):
     return fastapi.responses.StreamingResponse(sts_method1(cid), media_type="audio/wav")

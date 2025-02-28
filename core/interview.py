@@ -175,7 +175,7 @@ class InterviewManager():
         判断议题是否结束
         """
         if self.last_check_time == self.last_activate_time or \
-            self.data.progress >= 0:
+            self.data.progress < 0:
             # 在最后一次检测之前，记录没有更改，无需检测
             return
         self.last_check_time = self.last_activate_time
