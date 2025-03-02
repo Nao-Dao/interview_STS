@@ -45,3 +45,10 @@ WeTextProcessing==1.0.3
 
 ## LLM
 openai==1.61.1
+
+## data storage
+pymongo==4.11.1
+
+## test
+pytest==8.3.4
+mongomock==4.3.0
