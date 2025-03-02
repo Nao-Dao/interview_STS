@@ -3,34 +3,19 @@ import os
 import json
 import time
 import logging
-from pydantic import BaseModel
 from typing import Callable, List, Generator
 
 from .utils.snowflake import generate_snowflake_id
-from .llm import ChatResponse, ChatMessage
+from .llm import ChatResponse,ChatMessage
+from .storage.factory import create_storage
+from .data_models.interview_data import InterviewData
+from .data_models.audio_message import AudioMessage
 
 logger = logging.getLogger(__name__)
 
-class AudioMeaasge(ChatMessage):
-    audio_path: List[str] = []
-
-class InterviewData(BaseModel):
-    # 使用雪花算法生成的id
-    id: int
-    # 访问的进度
-    progress: int
-    # 访谈的议题, 需要从议题里面选择
-    questions: list[str]
-    # 聊天历史记录
-    history: list[AudioMeaasge]
-    # 与llm聊天的记录
-    # 与聊天的历史记录不同，这个需要限制最大值
-    # 这里默认不超过5000个字
-    messages: list[ChatMessage]
-
 class InterviewManager():
-    # 定义保存数据的位置
-    SAVE_PATH = "data"
+    # 采访问题的配置文件路径
+    CONFIG_PATH = "data"
     MAX_LEN = 5000
 
     SYSTEM_ABSTRACT_PROMPT = """你是一位擅长总结和概括的研究者，专门从冗长或复杂的访谈资料中提炼核心要点。你的目标是用清晰、简练的语言对大量信息进行梳理，帮助阅读者快速抓住访谈中的主要内容与重点观点。
@@ -79,7 +64,8 @@ class InterviewManager():
 
         if id is None:
             id = generate_snowflake_id()
-
+        
+        self.storage = create_storage()
         self.id = id
         if not self.exists(id):
             self.data = self.create_data(id)
@@ -96,7 +82,7 @@ class InterviewManager():
             )
         else:
             # 添加聊天记录
-            self.data.history.append(AudioMeaasge(role = role, content = message))
+            self.data.history.append(AudioMessage(role = role, content = message))
 
         if len(self.data.messages) and role == self.data.messages[-1].role:
             # 角色一致, 意味着是补充, 不分段
@@ -208,51 +194,37 @@ class InterviewManager():
             ]
         return l
 
-    @staticmethod
-    def load_data(id: int) -> InterviewData:
-        json_path = os.path.join(InterviewManager.SAVE_PATH, "interview", "%s.json" % id)
-        if not os.path.exists(json_path):
-            raise FileNotFoundError()
+    def load_data(self, id: int) -> InterviewData:
+        return self.storage.load(id)
 
-        with open(json_path, "r", encoding="utf-8") as f:
-            file_content = f.read()
-        return InterviewData.model_validate_json(file_content)
+    def save_data(self, data: InterviewData):
+        self.storage.save(data)
 
-    @staticmethod
-    def save_data(data: InterviewData):
-        file_content = data.model_dump_json(indent=2)
-        json_path = os.path.join(InterviewManager.SAVE_PATH, "interview", "%s.json" % data.id)
-        if not os.path.exists(os.path.dirname(json_path)):
-            os.makedirs(os.path.dirname(json_path))
-
-        with open(json_path, "w", encoding="utf-8") as f:
-            f.write(file_content)
-
-    @staticmethod
-    def create_data(id: int) -> InterviewData:
+    def create_data(self, id: int) -> InterviewData:
         """
         创建并初始化一个新的访谈数据对象。
         """
-        json_path = os.path.join(InterviewManager.SAVE_PATH, "config", "questions.json")
+        
+        json_path = os.path.join(InterviewManager.CONFIG_PATH, "config", "questions.json")
         questions = []
         if os.path.exists(json_path):
             with open(json_path, "r", encoding="utf-8") as f:
                 questions = json.loads(f.read())
 
-        return InterviewData(
+        data = InterviewData(
             id=id,
             progress=-1,
             history=[],
             messages=[],
             questions=questions
         )
-
-    @staticmethod
-    def exists(id: int) -> bool:
+        self.storage.save(data)
+        return data
+    
+    def exists(self, id: int) -> bool:
         """
         检查指定ID的访谈数据是否存在。
         """
-        json_path = os.path.join(InterviewManager.SAVE_PATH, "interview", "%s.json" % id)
-        return os.path.exists(json_path)
+        return self.storage.exists(id)
 
 

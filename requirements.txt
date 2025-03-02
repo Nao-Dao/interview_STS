@@ -58,3 +58,9 @@ WeTextProcessing==1.0.3
 
 ## LLM
 openai==1.61.1
+
+## data storage
+minio==7.2.15
+
+## test
+pytest==8.3.4
