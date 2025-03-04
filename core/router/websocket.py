@@ -9,10 +9,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ..utils.audio import wave_header_chunk
-from ..model.sensor import vad_array, asr_array
+from model.sensor import vad_array, asr_array
 
 from . import put_llm, generate_msg, save_audio
-from ..model.sovits import stream_io
+from model.sovits import stream_io
 def sts_method1(cid):
     b = b""
     for blob in stream_io(generate_msg(cid)):

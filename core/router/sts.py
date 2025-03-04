@@ -3,7 +3,7 @@ import fastapi
 from typing import Annotated, List
 
 from . import put_llm, generate_msg, save_audio
-from ..model.sovits import stream_io
+from model.sovits import stream_io
 def sts_method1(cid):
     b = b""
     for blob in stream_io(generate_msg(cid)):
@@ -17,7 +17,7 @@ router = fastapi.APIRouter()
 async def tts(cid: int):
     return fastapi.responses.StreamingResponse(sts_method1(cid), media_type="audio/wav")
 
-from ..model.sensor import asr as sensor
+from model.sensor import asr as sensor
 from ..utils.audio import webm2wav
 @router.post("/api/asr")
 async def asr(files: Annotated[List[bytes], fastapi.File(description="wav or mp3 audios in 16KHz")],
