@@ -6,6 +6,7 @@ from ..data_models.interview_data import InterviewData
 from typing import Optional
 import os
 import json
+from ..utils.snowflake import generate_snowflake_id
 
 class MinioStorage(InterviewStorage):
     """MinIO implementation of interview storage"""
@@ -33,9 +34,13 @@ class MinioStorage(InterviewStorage):
         if not self.client.bucket_exists(self.bucket_name):
             self.client.make_bucket(self.bucket_name)
     
-    def _get_object_path(self, id: int) -> str:
+    def _get_object_path(self, interview_id: int) -> str:
         """Generate object path for interview data"""
-        return f"{id}/data.json"
+        return f"{interview_id}/interview.json"
+    
+    def _get_audio_object_path(self, interview_id: int, audio_id: int, format: str) -> str:
+        base_path = f"{interview_id}/audios/{audio_id}"
+        return f"{base_path}.{format}" if format else base_path 
     
     def save(self, data: InterviewData) -> bool:
         """Save interview data to MinIO"""
@@ -81,3 +86,32 @@ class MinioStorage(InterviewStorage):
             return True
         except:
             return False
+        
+    def save_audio(self,interview_id, data, format: str = None) -> str:
+        try:
+            audio_id = generate_snowflake_id()
+            object_path = self._get_audio_object_path(interview_id, audio_id, format)
+
+            content_types = {
+                'mp3': 'audio/mpeg',
+                'wav': 'audio/wav',
+                'opus': 'audio/opus',
+                'ogg': 'audio/ogg'
+            }
+            content_type = content_types.get(format, 'application/octet-stream')
+            
+            result = self.client.put_object(
+                bucket_name=self.bucket_name,
+                object_name=object_path,
+                data=BytesIO(data),
+                length=len(data),
+                content_type=content_type
+            )
+            if result and result.etag:
+                return object_path
+        except Exception as e:
+            print(f"Error saving to MinIO: {e}")
+            print(f"Bucket: {self.bucket_name}")
+            print(f"Object path: {object_path}")
+            return False
+        pass    

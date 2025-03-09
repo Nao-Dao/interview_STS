@@ -59,6 +59,7 @@ class TTS(TTS_PromptCache):
         return torch.float16 if self.configs.is_half == True else torch.float32
 
     def __init__(self, configs: TTS_Config) -> None:
+            
         self.configs = configs
         super().__init__(self)
 

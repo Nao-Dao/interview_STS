@@ -71,6 +71,8 @@ class InterviewManager():
             self.data = self.create_data(id)
         else:
             self.data = self.load_data(id)
+        
+        self.audio_format = os.getenv("AUDIO_FORMAT", "wav")
 
     def add_chat(self, message: str, role: str):
         self.last_activate_time = time.time_ns()
@@ -228,3 +230,5 @@ class InterviewManager():
         return self.storage.exists(id)
 
 
+    def save_audio(self, data) -> str:
+        return self.storage.save_audio(self.id, data, self.audio_format)

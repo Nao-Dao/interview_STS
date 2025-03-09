@@ -24,7 +24,9 @@ class TestMinioStorage:
             messages=[ChatMessage(role="user", content="Test message")]
         )
         
-        self.mock_client.put_object.return_value = None
+        self.mock_client.put_object.return_value = MagicMock(
+            etag="test_etag"
+        )
         assert self.storage.save(test_data)
         self.mock_client.put_object.assert_called_once()
     

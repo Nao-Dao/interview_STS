@@ -3,6 +3,7 @@ import subprocess
 import soundfile as sf
 import numpy as np
 from io import BytesIO
+import ffmpeg
 
 ### modify from https://github.com/RVC-Boss/GPT-SoVITS/pull/894/files
 def pack_ogg(io_buffer:BytesIO, data:np.ndarray, rate:int):
@@ -63,13 +64,40 @@ def wave_header_chunk(frame_input=b"", channels=1, sample_width=2, sample_rate=3
     wav_buf.seek(0)
     return wav_buf.read()
 
-import ffmpeg
-def webm2wav(webm: bytes):
+def compress_audio(input_bytes: bytes, format: str = 'mp3', bitrate: str = '128k') -> bytes:
+    """Compress audio data using FFmpeg
+    
+    Args:
+        input_bytes: Input audio data
+        format: Output format ('mp3', 'aac', 'opus', 'ogg')
+        bitrate: Target bitrate ('64k', '128k', '192k')
+    
+    Returns:
+        bytes: Compressed audio data
+    """
     process = (
         ffmpeg
-        .input('pipe:0')  # 通过管道输入
-        .output('pipe:1', format='wav')  # 通过管道输出为 WAV 格式
+        .input('pipe:0')
+        .output(
+            'pipe:1',
+            format=format,
+            acodec='libmp3lame' if format == 'mp3' else None,  # Use appropriate codec
+            audio_bitrate=bitrate,
+            **{'compression_level': '10'} if format == 'ogg' else {}
+        )
         .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
     )
-    stdout_data, _ = process.communicate(input=webm)
+    stdout_data, _ = process.communicate(input=input_bytes)
     return stdout_data
+
+def webm2wav(webm: bytes, compress: bool = True):
+    if not compress:
+        process = (
+            ffmpeg
+            .input('pipe:0')  # 通过管道输入
+            .output('pipe:1', format='wav')  # 通过管道输出为 WAV 格式
+            .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
+        )
+        stdout_data, _ = process.communicate(input=webm)
+        return stdout_data
+    return compress_audio(webm, format='mp3', bitrate='128k')

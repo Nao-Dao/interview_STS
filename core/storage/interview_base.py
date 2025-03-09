@@ -18,11 +18,11 @@ class InterviewStorage(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def load(self, id: int) -> Optional[InterviewData]:
+    def load(self, interview_id: int) -> Optional[InterviewData]:
         """Load interview data
         
         Args:
-            id: Interview ID to load
+            interview_id: Interview interview_id to load
             
         Returns:
             Optional[InterviewData]: Interview data if found, None otherwise
@@ -30,13 +30,25 @@ class InterviewStorage(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def exists(self, id: int) -> bool:
+    def exists(self, interview_id: int) -> bool:
         """Check if interview exists
         
         Args:
-            id: Interview ID to check
+            interview_id: Interview interview_id to check
             
         Returns:
             bool: True if interview exists, False otherwise
         """
         raise NotImplementedError
+    
+    @abstractmethod
+    def save_audio(self, interview_id, data, format: str = None) -> str:
+        """Save audio data
+        
+        Args:
+            data: audio data to save
+            
+        Returns:
+            bool: True if save successful, False otherwise
+        """
+        raise NotImplementedError 
