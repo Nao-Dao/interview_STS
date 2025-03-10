@@ -75,11 +75,11 @@ class WebsocketMessage(BaseModel):
 
 class WebsocketClient:
     def __init__(self, ws: fastapi.WebSocket) -> None:
-        self.rest_time = 800 # 讲话时，最长允许的停顿时间, 单位ms
-        self.min_audio_frame_len = 25 * 0.001 # 最小音频帧应该保证25毫秒
-        
+        self.rest_time = 800  # 讲话时，最长允许的停顿时间, 单位ms
+        self.min_audio_frame_len = 25 * 0.001  # 最小音频帧应该保证25毫秒
         self.ws = ws
         self.session_id = None # session，便于相互索引
+        self.user_id: str = ""
         self.sampleRate: int = 0
         self.audioBuffer: np.ndarray = np.array([], dtype=np.float32)
 
@@ -93,20 +93,35 @@ class WebsocketClient:
         array = np.frombuffer(blob, dtype=np.int16).astype(np.float32)
         if array.std() > 300:
             # 如果音频片段达到了要求
-            self.audioBuffer = np.concatenate([self.audioBuffer, array], dtype = np.float32, axis = 0)
+            self.audioBuffer = np.concatenate(
+                [self.audioBuffer, array], dtype=np.float32, axis=0
+            )
             return True
         else:
             # 插入空白音频片段，避免问题
-            self.audioBuffer = np.concatenate([self.audioBuffer, np.zeros(array.shape[0], dtype=np.float32)], dtype = np.float32, axis = 0)
+            self.audioBuffer = np.concatenate(
+                [self.audioBuffer, np.zeros(array.shape[0], dtype=np.float32)],
+                dtype=np.float32,
+                axis=0,
+            )
             return False
 
     async def asr(self, item: list[int]):
-        [startPos, stopPos] = [self._tran_ms_to_audioframe(item[0]), self._tran_ms_to_audioframe(item[1])]
+        [startPos, stopPos] = [
+            self._tran_ms_to_audioframe(item[0]),
+            self._tran_ms_to_audioframe(item[1]),
+        ]
         audioBuffer = self.audioBuffer[startPos:stopPos]
 
-        audioPad = int(self.sampleRate * self.min_audio_frame_len) - audioBuffer.shape[0]
+        audioPad = (
+            int(self.sampleRate * self.min_audio_frame_len) - audioBuffer.shape[0]
+        )
         if audioPad > 0:
-            audioBuffer = np.concatenate([audioBuffer, np.zeros(audioPad, dtype=np.float32)], axis = 0, dtype=np.float32)
+            audioBuffer = np.concatenate(
+                [audioBuffer, np.zeros(audioPad, dtype=np.float32)],
+                axis=0,
+                dtype=np.float32,
+            )
 
         asr = asr_array(audioBuffer, sampleRate=self.sampleRate, lang="zh")
         logger.debug("asr result: %s" % (asr.clean_text))
@@ -121,9 +136,9 @@ class WebsocketClient:
     async def valid(self):
         # 验证音频是否存在声音，且停止讲话
         array = self.audioBuffer
-        audio_len = (array.shape[0] / self.sampleRate) * 1000 # ms
+        audio_len = (array.shape[0] / self.sampleRate) * 1000  # ms
 
-        [items, param] = vad_array(array, sampleRate = self.sampleRate)
+        [items, param] = vad_array(array, sampleRate=self.sampleRate)
         logger.debug(items)
 
         if not len(items):
@@ -143,11 +158,14 @@ class WebsocketClient:
             self.audioBuffer = np.array([], dtype=np.float32)
         elif len(items) > 1:
             # 删除前几段
-            self.audioBuffer = self.audioBuffer[self._tran_ms_to_audioframe(items[-1][0]):]
+            self.audioBuffer = self.audioBuffer[
+                self._tran_ms_to_audioframe(items[-1][0]) :
+            ]
 
     async def action(self, wm: WebsocketMessage):
         if wm.action == "init":
             self.sampleRate = int(wm.param["sampleRate"])
+            self.user_id = wm.param["user_id"]
         elif self.sampleRate <= 0:
             # 还未初始化
             return
@@ -168,10 +186,11 @@ class WebsocketClient:
                     break  # 收到终止信号
                 await self.action(wm)
             except Exception as e:
-                logger.error(f"Error processing action: {e}", stack_info=True, exc_info=1)
+                logger.error(
+                    f"Error processing action: {e}", stack_info=True, exc_info=1
+                )
             finally:
                 self._task_queue.task_done()
-
 
     async def run(self):
         """启动 WebSocket 客户端"""
@@ -192,4 +211,3 @@ class WebsocketClient:
             self._running = False
             await self._task_queue.put(None)  # 发送终止信号
             await worker_task  # 等待 worker 完成
-

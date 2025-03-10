@@ -9,9 +9,9 @@ uvicorn==0.30.6
 fastapi==0.110.1
 python-multipart
 modelscope
-simplejson
+simplejson==3.20.1
 sortedcontainers
-addict
+addict==2.4.0
 
 python-dotenv
 websockets

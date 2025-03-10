@@ -6,14 +6,15 @@ import logging
 from typing import Callable, List, Generator
 
 from .utils.snowflake import generate_snowflake_id
-from .llm import ChatResponse,ChatMessage
+from .llm import ChatResponse, ChatMessage
 from .storage.factory import create_storage
 from .data_models.interview_data import InterviewData
 from .data_models.audio_message import AudioMessage
 
 logger = logging.getLogger(__name__)
 
-class InterviewManager():
+
+class InterviewManager:
     # 采访问题的配置文件路径
     CONFIG_PATH = "data"
     MAX_LEN = 5000
@@ -56,22 +57,22 @@ class InterviewManager():
 - 最重要的一点，你说的话应该尽可能的少，这样子符合对话的方式
 """
 
-    def __init__(self, id: int = None):
+    def __init__(self, user_id: str = None):
         # 聊天记录的修改时间
         self.last_activate_time = time.time_ns()
         # 检测记录的最后一次聊天记录时间
         self.last_check_time = self.last_activate_time
 
-        if id is None:
-            id = generate_snowflake_id()
-        
+        if user_id is None:
+            user_id = str(generate_snowflake_id())
+
         self.storage = create_storage()
-        self.id = id
-        if not self.exists(id):
-            self.data = self.create_data(id)
+        self.user_id = user_id
+        if not self.exists(user_id):
+            self.data = self.create_data(user_id)
         else:
-            self.data = self.load_data(id)
-        
+            self.data = self.load_data(user_id)
+
         self.audio_format = os.getenv("AUDIO_FORMAT", "wav")
 
     def add_chat(self, message: str, role: str):
@@ -80,21 +81,21 @@ class InterviewManager():
             # 角色一致, 意味着是补充, 不分段
             self.data.history[-1].content = "%s,%s" % (
                 self.data.history[-1].content,
-                message
+                message,
             )
         else:
             # 添加聊天记录
-            self.data.history.append(AudioMessage(role = role, content = message))
+            self.data.history.append(AudioMessage(role=role, content=message))
 
         if len(self.data.messages) and role == self.data.messages[-1].role:
             # 角色一致, 意味着是补充, 不分段
             self.data.messages[-1].content = "%s,%s" % (
                 self.data.messages[-1].content,
-                message
+                message,
             )
         else:
             # 添加聊天记录
-            self.data.messages.append(ChatMessage(role = role, content = message))
+            self.data.messages.append(ChatMessage(role=role, content=message))
 
         # 保存记录
         self.save_data(self.data)
@@ -105,20 +106,15 @@ class InterviewManager():
         elif self.data.progress >= len(self.data.questions):
             # 结束访谈
             return None
-        messages = [
-            { "role": "system", "content": self.SYSTEM_INTERVIEW_PROMPT }
-        ]
+        messages = [{"role": "system", "content": self.SYSTEM_INTERVIEW_PROMPT}]
         for m in self.data.messages:
-            messages.append({
-                "role": m.role,
-                "content": m.content
-            })
+            messages.append({"role": m.role, "content": m.content})
         logger.debug("generate: %s" % json.dumps(messages, ensure_ascii=False))
         return messages
 
-    def check_llm_message(self, chat: Callable[
-        [List[ChatMessage]], Generator[ChatResponse]
-    ]):
+    def check_llm_message(
+        self, chat: Callable[[List[ChatMessage]], Generator[ChatResponse]]
+    ):
         """检查llm消息是否达到上限
         注意，该方法应该定时调用
         """
@@ -132,9 +128,9 @@ class InterviewManager():
             return
         self.summary_llm_message(chat)
 
-    def summary_llm_message(self, chat: Callable[
-        [List[ChatMessage]], Generator[ChatResponse]
-    ]):
+    def summary_llm_message(
+        self, chat: Callable[[List[ChatMessage]], Generator[ChatResponse]]
+    ):
         """
         总结概括 llm 里面的消息队列
         """
@@ -146,24 +142,26 @@ class InterviewManager():
                 messages += "研究者:'%s'\n" % m.content
         # 削减消息
         ## 构建请求的消息内容
-        for resp in chat([
-            { "role": "system", "content": self.SYSTEM_ABSTRACT_PROMPT },
-            { "role": "user", "content": "下面是先前访谈的内容:\n%s" % messages}
-        ]):
+        for resp in chat(
+            [
+                {"role": "system", "content": self.SYSTEM_ABSTRACT_PROMPT},
+                {"role": "user", "content": "下面是先前访谈的内容:\n%s" % messages},
+            ]
+        ):
             continue
         self.data.messages = [
-            { "role": "user", "content": "我会提供给你之前访谈的内容，请你在理解后继续进行访谈"},
-            { "role": "user", "content": "%s" % resp.content}
+            {
+                "role": "user",
+                "content": "我会提供给你之前访谈的内容，请你在理解后继续进行访谈",
+            },
+            {"role": "user", "content": "%s" % resp.content},
         ]
 
-    def judge(self, chat: Callable[
-        [List[ChatMessage]], Generator[ChatResponse]
-    ]):
+    def judge(self, chat: Callable[[List[ChatMessage]], Generator[ChatResponse]]):
         """
         判断议题是否结束
         """
-        if self.last_check_time == self.last_activate_time or \
-            self.data.progress < 0:
+        if self.last_check_time == self.last_activate_time or self.data.progress < 0:
             # 在最后一次检测之前，记录没有更改，无需检测
             return
         self.last_check_time = self.last_activate_time
@@ -173,11 +171,17 @@ class InterviewManager():
                 messages += "用户:'%s'\n" % m.content
             elif m.role == "assistant":
                 messages += "研究者:'%s'\n" % m.content
-        
-        for resp in chat([
-            { "role": "system", "content": self.SYSTEM_JUDGE_PROMPT },
-            { "role": "user", "content": "访谈议题:%s\n访谈内容:%s" % (self.data.questions[self.data.progress], messages)}
-        ]):
+
+        for resp in chat(
+            [
+                {"role": "system", "content": self.SYSTEM_JUDGE_PROMPT},
+                {
+                    "role": "user",
+                    "content": "访谈议题:%s\n访谈内容:%s"
+                    % (self.data.questions[self.data.progress], messages),
+                },
+            ]
+        ):
             continue
 
         logger.debug("juege: %s" % resp.content)
@@ -191,44 +195,45 @@ class InterviewManager():
         l = self.data.progress < len(self.data.questions)
         if l:
             self.data.messages = [
-                ChatMessage(role = "assistant", content = "当前的访谈核心应该聚焦在`%s`。" % self.data.questions[self.data.progress]),
-                ChatMessage(role = "user", content = "您好，接下来要做些什么呢？")
+                ChatMessage(
+                    role="assistant",
+                    content="当前的访谈核心应该聚焦在`%s`。"
+                    % self.data.questions[self.data.progress],
+                ),
+                ChatMessage(role="user", content="您好，接下来要做些什么呢？"),
             ]
         return l
 
-    def load_data(self, id: int) -> InterviewData:
-        return self.storage.load(id)
+    def load_data(self, user_id: int) -> InterviewData:
+        return self.storage.load(user_id)
 
     def save_data(self, data: InterviewData):
         self.storage.save(data)
 
-    def create_data(self, id: int) -> InterviewData:
+    def create_data(self, user_id: int) -> InterviewData:
         """
         创建并初始化一个新的访谈数据对象。
         """
-        
-        json_path = os.path.join(InterviewManager.CONFIG_PATH, "config", "questions.json")
+
+        json_path = os.path.join(
+            InterviewManager.CONFIG_PATH, "config", "questions.json"
+        )
         questions = []
         if os.path.exists(json_path):
             with open(json_path, "r", encoding="utf-8") as f:
                 questions = json.loads(f.read())
 
         data = InterviewData(
-            id=id,
-            progress=-1,
-            history=[],
-            messages=[],
-            questions=questions
+            user_id=user_id, progress=-1, history=[], messages=[], questions=questions
         )
         self.storage.save(data)
         return data
-    
-    def exists(self, id: int) -> bool:
-        """
-        检查指定ID的访谈数据是否存在。
-        """
-        return self.storage.exists(id)
 
+    def exists(self, user_id: int) -> bool:
+        """
+        检查指定user_id的访谈数据是否存在。
+        """
+        return self.storage.exists(user_id)
 
     def save_audio(self, data) -> str:
-        return self.storage.save_audio(self.id, data, self.audio_format)
+        return self.storage.save_audio(self.user_id, data, self.audio_format)

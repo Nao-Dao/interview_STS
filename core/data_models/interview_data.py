@@ -2,9 +2,10 @@ from pydantic import BaseModel
 from ..llm import ChatMessage
 from .audio_message import AudioMessage
 
+
 class InterviewData(BaseModel):
-    # 使用雪花算法生成的id
-    id: int
+    # id 来自微信openid
+    user_id: str
     # 访问的进度
     progress: int
     # 访谈的议题, 需要从议题里面选择
@@ -15,4 +16,3 @@ class InterviewData(BaseModel):
     # 与聊天的历史记录不同，这个需要限制最大值
     # 这里默认不超过5000个字
     messages: list[ChatMessage]
-
