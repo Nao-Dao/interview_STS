@@ -4,7 +4,7 @@ LLM聊天管理
 import os
 from logging import getLogger
 logger = getLogger(__name__)
-from ..llm import Chat
+from ..llm import Chat, InterviewManager
 
 module = __import__(f"core.llm.{os.getenv('LLM', 'chatgpt')}", globals(), locals(), ["chat"])
 chat: Chat = module.chat
@@ -34,3 +34,22 @@ class SessionManager():
             del self.session[key]
         return key
 session_manager = SessionManager()
+
+import threading
+import time
+def timeHandler():
+    while True:
+        for key, item in session_manager.session.items():
+            logger.debug("run session: %s" % key)
+            if "im" in item:
+                im: InterviewManager = item["im"]
+                im.check_llm_message(chat)
+                if im.judge(chat):
+                    im.next()
+        time.sleep(30)
+
+thread = threading.Thread(
+    target=timeHandler,
+    daemon=True
+)
+thread.start()
