@@ -9,11 +9,14 @@ uvicorn==0.30.6
 fastapi==0.110.1
 python-multipart
 modelscope
+simplejson
+sortedcontainers
+addict
+
 python-dotenv
 websockets
 ## SensorVoice
 funasr==1.1.3
-noisereduce==3.0.3
 
 ## GPT_SoVITS
 ffmpeg-python
@@ -30,7 +33,7 @@ opencc==1.1.9; sys_platform != 'linux'
 opencc==1.1.1; sys_platform == 'linux'
 
 x_transformers
-fast_langdetect==0.2.5
+fast_langdetect
 wordsegment
 g2p_en
 nltk
@@ -38,7 +41,6 @@ ToJyutping
 # pyopenjtalk>=0.3.4
 g2pk2
 ko_pron
-split-lang==2.1.0
 
 ## CosyVoice
 conformer==0.3.2

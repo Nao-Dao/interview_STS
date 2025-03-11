@@ -1,6 +1,5 @@
 import os
 import fastapi
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 load_dotenv()
@@ -20,6 +19,7 @@ for m in ENABLE:
     module = __import__("core.router.{}".format(m), globals(), locals(), ["router"], 0)
     app.include_router(module.router)
 
+from fastapi.responses import HTMLResponse
 @app.get("/", response_class = HTMLResponse)
 async def read_index():
     with open("ui/dist/index.html", "rb") as f:

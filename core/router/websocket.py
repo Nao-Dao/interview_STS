@@ -1,35 +1,72 @@
 import base64
 import fastapi
 import asyncio
-import noisereduce
 import numpy as np
 from pydantic import BaseModel
 from typing import Literal
-import logging
-logger = logging.getLogger(__name__)
+from logging import getLogger
+logger = getLogger(__name__)
 
-from ..utils.audio import wave_header_chunk
+from model.denoise import denoise
 from model.sensor import vad_array, asr_array
-
-from . import put_llm, generate_msg, save_audio
 from model.sovits import stream_io
-def sts_method1(cid):
-    b = b""
-    for blob in stream_io(generate_msg(cid)):
-        b += blob
-        yield blob
-    save_audio(cid, b)
-    yield b""
+from ..utils.audio import wave_header_chunk
+from ..llm import InterviewManager
+from . import session_manager, chat
 
 router = fastapi.APIRouter()
-@router.websocket("/ws")
-async def ws(websocket: fastapi.WebSocket):
+@router.websocket("/ws/{session_id}")
+async def ws(websocket: fastapi.WebSocket, session_id: str):
     await websocket.accept()
-    await WebsocketClient(websocket).run()
+    session = session_manager.get(session_id)
+    if session is None:
+        await websocket.close()
+    else:
+        ws = WebsocketClient(websocket)
+        ws.session_id = session_id
+        session["ws"] = ws
+        session["chat"] = InterviewManager(int(session_id))
+        await ws.run()
 
-@router.get("/api/tts/stream")
-async def tts(cid: int):
-    return fastapi.responses.StreamingResponse(sts_method1(cid), media_type="audio/wav")
+@router.get("/api/tts")
+async def tts(request: fastapi.Request):
+    session_id = request.cookies.get("session")
+    session = session_manager.get(session_id)
+    return fastapi.responses.StreamingResponse(sts_method(session), media_type="audio/wav")
+
+
+@router.get("/api/history")
+async def history(request: fastapi.Request):
+    session_id = request.cookies.get("session")
+    session = session_manager.get(session_id)
+    cm: InterviewManager = session["chat"]
+    return fastapi.responses.JSONResponse({
+        "history": [item.model_dump() for item in cm.data.history]
+    })
+
+def sts_method(session: dict[str, any]):
+    b = b""
+    cm: InterviewManager = session["chat"]
+    for blob in stream_io(generate_msg(session)):
+        b += blob
+        yield blob
+    cm.save_audio(b)
+
+def generate_msg(session: dict[str, any]):
+    cm: InterviewManager = session["chat"]
+    ws: WebsocketClient = session["ws"]
+    if len(cm.data.messages) and cm.data.messages[-1].role == "assistant":
+        yield cm.data.messages[-1].content
+    else:
+        for resp in chat(cm.get_llm_message()):
+            if resp.type == "char":
+                # 流式输出llm的响应
+                asyncio.run(ws.ws.send_text("stream:llm:%s" % resp.content))
+            if resp.type == "sentence":
+                logger.debug("start generate llm sentence: %s" % resp.content)
+                yield resp.content
+        cm.add_chat(resp.content, "assistant")
+
 
 class WebsocketMessage(BaseModel):
     action: Literal["init", "record", "finish"]
@@ -42,7 +79,7 @@ class WebsocketClient:
         self.min_audio_frame_len = 25 * 0.001 # 最小音频帧应该保证25毫秒
         
         self.ws = ws
-        self.cid: int = 0
+        self.session_id = None # session，便于相互索引
         self.sampleRate: int = 0
         self.audioBuffer: np.ndarray = np.array([], dtype=np.float32)
 
@@ -54,7 +91,6 @@ class WebsocketClient:
 
     def _load_audio_buffer(self, blob):
         array = np.frombuffer(blob, dtype=np.int16).astype(np.float32)
-        array = noisereduce.reduce_noise(array, self.sampleRate, sigmoid_slope_nonstationary=True)
         if array.std() > 300:
             # 如果音频片段达到了要求
             self.audioBuffer = np.concatenate([self.audioBuffer, array], dtype = np.float32, axis = 0)
@@ -64,7 +100,7 @@ class WebsocketClient:
             self.audioBuffer = np.concatenate([self.audioBuffer, np.zeros(array.shape[0], dtype=np.float32)], dtype = np.float32, axis = 0)
             return False
 
-    def asr(self, item: list[int]):
+    async def asr(self, item: list[int]):
         [startPos, stopPos] = [self._tran_ms_to_audioframe(item[0]), self._tran_ms_to_audioframe(item[1])]
         audioBuffer = self.audioBuffer[startPos:stopPos]
 
@@ -75,8 +111,10 @@ class WebsocketClient:
         asr = asr_array(audioBuffer, sampleRate=self.sampleRate, lang="zh")
         logger.debug("asr result: %s" % (asr.clean_text))
         if len(asr.clean_text):
-            put_llm(asr.clean_text, self.cid)
-            save_audio(self.cid, wave_header_chunk(sample_rate=self.sampleRate) + audioBuffer.astype(np.int16).tobytes())
+            cm: InterviewManager = session_manager.get(self.session_id)["chat"]
+            cm.add_chat(asr.clean_text, "user")
+            cm.save_audio(wave_header_chunk(sample_rate=self.sampleRate) + audioBuffer.astype(np.int16).tobytes())
+            await self.ws.send_text("stream:asr:%s" % asr.text)
             return True
         return False
 
@@ -96,11 +134,11 @@ class WebsocketClient:
         if len(items) > 1:
             # 超过一段的语音内容，识别前几段
             for item in items[:-1]:
-                if self.asr(item):
-                    await self.ws.send_text("tts:stop")
+                await self.asr(item)
         if audio_len - items[-1][1] > self.rest_time:
             # 超过指定时长没有新的语音输入，意味着结束讲话
-            if self.asr(items[-1]):
+            r = await self.asr(items[-1])
+            if r:
                 await self.ws.send_text("tts:start")
             self.audioBuffer = np.array([], dtype=np.float32)
         elif len(items) > 1:
@@ -110,13 +148,14 @@ class WebsocketClient:
     async def action(self, wm: WebsocketMessage):
         if wm.action == "init":
             self.sampleRate = int(wm.param["sampleRate"])
-            self.cid = int(wm.param["cid"])
         elif self.sampleRate <= 0:
             # 还未初始化
             return
         elif wm.action == "record":
             if not self._load_audio_buffer(base64.b64decode(wm.param["audio"])):
                 await self.ws.send_text("asr:toolow")
+            else:
+                await self.ws.send_text("tts:stop")
             await self.valid()
 
     async def _worker(self):

@@ -1,71 +1,36 @@
-from __future__ import annotations
+"""
+LLM聊天管理
+"""
 import os
-import time
-import threading
-
-from core.utils.cache import cache as CacheUtils
-from core.utils.snowflake import generate_snowflake_id
-from core.interview import InterviewManager
-
-cache: dict[int, InterviewManager] = {}
+from logging import getLogger
+logger = getLogger(__name__)
+from ..llm import Chat
 
 module = __import__(f"core.llm.{os.getenv('LLM', 'chatgpt')}", globals(), locals(), ["chat"])
-chat = module.chat
+chat: Chat = module.chat
 
-def timeHandler():
-    # 定时任务
-    while True:
-        for key, item in cache.items():
-            print("check: %s" % str(key))
-            item.check_llm_message(chat)
-            if item.judge(chat):
-                item.next()
-        time.sleep(30) # 30s 执行一次
-thread = threading.Thread(target=timeHandler, daemon=True)
-thread.start()
+class SessionManager():
+    def __init__(self) -> None:
+        self.session: dict[str, dict[str, any]] = {}
 
+    def get(self, key: str | int) -> dict[str, any]:
+        if key is None:
+            return None
+        key = str(key)
+        return self.session.get(key, None)
 
-def _get_im_instance(cid: int = None):
-    if cid is None:
-        cid = generate_snowflake_id()
-    if not isinstance(cid, int):
-       cid = int(cid) 
-    if cid not in cache:
-        cache[cid] = InterviewManager(cid)
-    return cache[cid]
+    def set(self, key: str | int, value: dict[str, any] = {}) -> None:
+        key = str(key)
+        self.session[key] = value
+        return key
 
+    def exist(self, key: str | int) -> bool:
+        key = str(key)
+        return key in self.session
 
-def put_llm(msg: str, cid: int = None):
-    """
-    放置用户的聊天记录
-    """
-    im = _get_im_instance(cid)
-    im.add_chat(msg, "user")
-    im.save_data(im.data)
-
-
-def generate_msg(cid: int = None):
-    """
-    产生LLM产生的语音数据
-    """
-    im = _get_im_instance(cid)
-    if len(im.data.messages) and im.data.messages[-1].role == "assistant":
-        yield im.data.messages[-1].content
-    else:
-        for resp in chat(im.get_llm_message()):
-            if resp.type == "sentence":
-                yield resp.content
-        im.add_chat(resp.content, "assistant")
-        im.save_data(im.data)
-
-
-def save_audio(cid: int = None, audio: bytes = None):
-    """
-    将音频数据保存到聊天记录当中
-    """
-    im = _get_im_instance(cid)
-    path = CacheUtils.get_path(CacheUtils.save(audio, "wav"))
-    im.data.history[-1].audio_path.append(path)
-    im.save_data(im.data)
-
-
+    def delete(self, key: str | int) -> None:
+        key = str(key)
+        if key in self.session:
+            del self.session[key]
+        return key
+session_manager = SessionManager()

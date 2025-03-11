@@ -1,10 +1,13 @@
 from __future__ import annotations
 import os
 import re
+import logging
 import openai
 from typing import Generator
 
 from . import ChatResponse, ChatMessage
+
+logger = logging.getLogger(__name__)
 
 client = openai.OpenAI(
     base_url = os.getenv("OPENAI_BASE_URL", None),
@@ -12,23 +15,19 @@ client = openai.OpenAI(
 )
 
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
-    while True:
-        try:
-            response = client.chat.completions.create(
-                model = os.getenv("OPENAI_MODEL", None),
-                messages = messages,
-                max_tokens = 8192,
-                temperature = 0.7,
-                stream = True
-            )
-            break
-        except Exception as e:
-            continue
+    response = client.chat.completions.create(
+        model = os.getenv("OPENAI_MODEL", None),
+        messages = messages,
+        max_tokens = 8192,
+        temperature = 0.7,
+        stream = True
+    )
 
     # 因为用流式处理，需要进行断句。当一句完成后再返回。
     # 最后将整个句子保存
     global_content = []
     content = []
+    logger.debug("start llm generate msg")
     for resp in response:
         c: str = resp.choices[0].delta.content
         if c is None:
@@ -58,7 +57,7 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
     if len(content):
         # 还有剩下的内容
         yield ChatResponse(type = "sentence", content = "".join(content))
-
+    logger.debug("stop llm generate message")
     yield ChatResponse(type = "finish", content = "".join(global_content))
 
 

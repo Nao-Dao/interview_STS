@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 import sys
-import json
 from io import BytesIO
 from typing import Generator
 sys.path.append("./model/GPT_SoVITS")
@@ -9,7 +8,6 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 from model.GPT_SoVITS.TTS import TTS, TTSRunParam, TTS_Config
-from model.GPT_SoVITS.TTS_infer_pack.text_segmentation_method import get_method_names as get_cut_method_names
 
 from core.utils.audio import wave_header_chunk, pack_audio
 
@@ -26,8 +24,8 @@ def stream_io(tts_text: Generator[str]):
 tts_config = TTS_Config(os.getenv("GPT_SoVITS", "model_pretrained/GPT_SoVITS/tts_infer.yaml"))
 tts_pipeline = TTS(tts_config)
 tts_pipeline.set_prompt_cache(
-    os.getenv("PROMPT_AUDIO", "model_pretrained/Xiaochen.wav"),
-    os.getenv("PROMPT_TEXT", "上周，我去了一家意大利餐厅，它们的披萨简直太好吃了。"),
+    os.getenv("PROMPT_AUDIO", "model_pretrained/GPT_SoVITS/ssy.wav"),
+    os.getenv("PROMPT_TEXT", "的就是，你的能力表现会越接近的话，那你的那个大脑的活动，激活的模式，可能也会越相似。"),
     "zh"
 )
 
