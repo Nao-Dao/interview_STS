@@ -37,7 +37,7 @@ function startPhone() {
     ar.start();
     muted.value = false;
 
-    ws = new WebSocket(`/ws/${userInfo.session_id}`);
+    ws = new WebSocket(`/ws?session_id=${userInfo.sessionId}&user_id=${userInfo.userInfo.openid}`);
     ws.addEventListener("error", () => {
         ElMessage.error("连接失败");
         togglePhone();

@@ -2,7 +2,6 @@ import platform,os,traceback
 import ffmpeg
 import numpy as np
 from tools.i18n.i18n import I18nAuto
-import shutil
 
 i18n = I18nAuto(language=os.environ.get('language','Auto'))
 
@@ -19,7 +18,7 @@ def load_audio(file, sr):
         out, _ = (
             ffmpeg.input(file, threads=0)
             .output("-", format="f32le", acodec="pcm_f32le", ac=1, ar=sr)
-            .run(cmd=["/opt/homebrew/bin/ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True)
+            .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True)
         )
     except Exception as e:
         traceback.print_exc()

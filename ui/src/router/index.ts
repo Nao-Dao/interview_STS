@@ -29,7 +29,7 @@ router.beforeEach((to, _, next) => {
   const userInfo = useUserInfo();
 
   if (to.meta.requireAuth) {
-    userInfo.isLogin().then(r => {
+    userInfo.checkLoginStatus().then(r => {
       if (r) { next();}
       else {
         ElMessage.warning("请先登录");

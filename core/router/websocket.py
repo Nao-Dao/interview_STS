@@ -11,33 +11,34 @@ from model.denoise import denoise
 from model.sensor import vad_array, asr_array
 from model.sovits import stream_io
 from ..utils.audio import wave_header_chunk
-from ..llm import InterviewManager
+from ..interview import InterviewManager
 from . import session_manager, chat
 
 router = fastapi.APIRouter()
-@router.websocket("/ws/{session_id}")
-async def ws(websocket: fastapi.WebSocket, session_id: str):
+@router.websocket("/ws")
+async def ws(websocket: fastapi.WebSocket, session_id: str, user_id: str = None):
     await websocket.accept()
     session = session_manager.get(session_id)
     if session is None:
         await websocket.close()
     else:
-        ws = WebsocketClient(websocket)
-        ws.session_id = session_id
-        session["ws"] = ws
-        session["chat"] = InterviewManager(int(session_id))
-        await ws.run()
+        ws_client = WebsocketClient(websocket)
+        ws_client.session_id = session_id
+        ws_client.user_id = user_id
+        session["ws"] = ws_client
+        session["chat"] = InterviewManager(user_id)
+        await ws_client.run()
 
 @router.get("/api/tts")
 async def tts(request: fastapi.Request):
-    session_id = request.cookies.get("session")
+    session_id = request.cookies.get("session_id")
     session = session_manager.get(session_id)
     return fastapi.responses.StreamingResponse(sts_method(session), media_type="audio/wav")
 
 
 @router.get("/api/history")
 async def history(request: fastapi.Request):
-    session_id = request.cookies.get("session")
+    session_id = request.cookies.get("session_id")
     session = session_manager.get(session_id)
     cm: InterviewManager = session["chat"]
     return fastapi.responses.JSONResponse({
@@ -165,7 +166,6 @@ class WebsocketClient:
     async def action(self, wm: WebsocketMessage):
         if wm.action == "init":
             self.sampleRate = int(wm.param["sampleRate"])
-            self.user_id = wm.param["user_id"]
         elif self.sampleRate <= 0:
             # 还未初始化
             return

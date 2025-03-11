@@ -4,7 +4,7 @@ LLM聊天管理
 import os
 from logging import getLogger
 logger = getLogger(__name__)
-from ..llm import Chat, InterviewManager
+from ..interview import InterviewManager
 
 from .utils import cache, get_llm_module
 

@@ -1,8 +1,12 @@
-from fastapi import FastAPI, Request, APIRouter
+from fastapi import APIRouter, Request, Response, responses
 from fastapi.responses import JSONResponse, HTMLResponse
 import requests
 import os
+from ..utils.snowflake import generate_snowflake_id
 import json
+from . import session_manager
+from logging import getLogger
+logger = getLogger(__name__)
 
 router = APIRouter()
 APP_ID = os.getenv("APP_ID")
@@ -52,23 +56,64 @@ async def wechat_callback(code: str):
 
         print(f"user_info: {user_info}")
         nickname = user_info["nickname"].encode("latin-1").decode("utf-8")
-        print(nickname)
         user_info["nickname"] = nickname
+        session_id = str(generate_snowflake_id())
+        session_manager.set(session_id, dict())
         # Return success with postMessage to parent window
-        html_response = (
-            """
+        html_response = f"""
             <script>
                 window.opener.postMessage(
-                    { type: 'wechat-login-success', user: %s },
+                    {{
+                        type: 'wechat-login-success',
+                        user: {json.dumps(user_info)},
+                        session_id: '{session_id}',
+                    }},
                     '*'
                 );
                 window.close();
             </script>
         """
-            % user_info
+        logger.debug("Created login session: %s" % session_id)
+        response = HTMLResponse(content=html_response)
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            max_age=3600,  # 1 hour
+            httponly=True,
+            samesite="lax",
+            secure=True
         )
-
-        return HTMLResponse(content=html_response)
+        return response
 
     except Exception as e:
         return JSONResponse({"error": f"Login failed: {str(e)}"}, status_code=500)
+
+@router.get("/api/auth/status")
+def check_auth_status(request: Request):
+    session_id = request.cookies.get("session_id")
+    logger.debug("Checking auth status for session: %s" % session_id)
+
+    if not session_id or not session_manager.exist(session_id):
+        return JSONResponse(
+            {
+                "authenticated": False,
+                "message": "Not authenticated"
+            },
+            status_code=401
+        )
+    return JSONResponse({
+        "authenticated": True,
+        "message": "Authenticated"
+    })
+
+@router.post("/api/auth/logout")
+def logout(request: Request):
+    session_id = request.cookies.get("session_id")
+    session_manager.delete(session_id)
+    logger.debug("logout session: %s" % session_id)
+
+    response = JSONResponse({
+        "message": "Logged out"
+    })
+    response.delete_cookie("session")
+    return response

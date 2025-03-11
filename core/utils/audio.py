@@ -24,32 +24,19 @@ def pack_wav(io_buffer: BytesIO, data: np.ndarray, rate: int):
     sf.write(io_buffer, data, rate, format="wav")
     return io_buffer
 
-
-def pack_aac(io_buffer: BytesIO, data: np.ndarray, rate: int):
-    process = subprocess.Popen(
-        [
-            "ffmpeg",
-            "-f",
-            "s16le",  # 输入16位有符号小端整数PCM
-            "-ar",
-            str(rate),  # 设置采样率
-            "-ac",
-            "1",  # 单声道
-            "-i",
-            "pipe:0",  # 从管道读取输入
-            "-c:a",
-            "aac",  # 音频编码器为AAC
-            "-b:a",
-            "192k",  # 比特率
-            "-vn",  # 不包含视频
-            "-f",
-            "adts",  # 输出AAC数据流格式
-            "pipe:1",  # 将输出写入管道
-        ],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+def pack_aac(io_buffer:BytesIO, data:np.ndarray, rate:int):
+    process = subprocess.Popen([
+        'ffmpeg',
+        '-f', 's16le',  # 输入16位有符号小端整数PCM
+        '-ar', str(rate),  # 设置采样率
+        '-ac', '1',  # 单声道
+        '-i', 'pipe:0',  # 从管道读取输入
+        '-c:a', 'aac',  # 音频编码器为AAC
+        '-b:a', '192k',  # 比特率
+        '-vn',  # 不包含视频
+        '-f', 'adts',  # 输出AAC数据流格式
+        'pipe:1'  # 将输出写入管道
+    ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, _ = process.communicate(input=data.tobytes())
     io_buffer.write(out)
     return io_buffer
@@ -82,42 +69,12 @@ def wave_header_chunk(frame_input=b"", channels=1, sample_width=2, sample_rate=3
     wav_buf.seek(0)
     return wav_buf.read()
 
-
-def compress_audio(
-    input_bytes: bytes, format: str = "mp3", bitrate: str = "128k"
-) -> bytes:
-    """Compress audio data using FFmpeg
-
-    Args:
-        input_bytes: Input audio data
-        format: Output format ('mp3', 'aac', 'opus', 'ogg')
-        bitrate: Target bitrate ('64k', '128k', '192k')
-
-    Returns:
-        bytes: Compressed audio data
-    """
+def webm2wav(webm: bytes):
     process = (
-        ffmpeg.input("pipe:0")
-        .output(
-            "pipe:1",
-            format=format,
-            acodec="libmp3lame" if format == "mp3" else None,  # Use appropriate codec
-            audio_bitrate=bitrate,
-            **{"compression_level": "10"} if format == "ogg" else {}
-        )
+        ffmpeg
+        .input('pipe:0')  # 通过管道输入
+        .output('pipe:1', format='wav')  # 通过管道输出为 WAV 格式
         .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
     )
-    stdout_data, _ = process.communicate(input=input_bytes)
+    stdout_data, _ = process.communicate(input=webm)
     return stdout_data
-
-
-def webm2wav(webm: bytes, compress: bool = True):
-    if not compress:
-        process = (
-            ffmpeg.input("pipe:0")  # 通过管道输入
-            .output("pipe:1", format="wav")  # 通过管道输出为 WAV 格式
-            .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
-        )
-        stdout_data, _ = process.communicate(input=webm)
-        return stdout_data
-    return compress_audio(webm, format="mp3", bitrate="128k")

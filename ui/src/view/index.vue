@@ -1,54 +1,25 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { useSystemConfig } from "../store/Config";
 import { ElButton } from "element-plus";
 import wechatLogo from "@/assets/images/wechat.png";
+import { useUserInfo } from "../store/UserInfo";
 
-const config = useSystemConfig();
-const isAuthenticated = ref<boolean>(false);
-const userInfo = ref<any>(null);
+const router = useRouter();
+const user = useUserInfo();
 
 const handleLogin = async () => {
   try {
-    // First, get the WeChat auth URL
-    const authResponse = await fetch(config.getURL("/api/auth/wechat"));
-    if (!authResponse.ok) {
-      throw new Error("Failed to get WeChat auth URL");
-    }
-
-    const { url } = await authResponse.json();
-
-    // Open WeChat login in a new window
-    const width = 600;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const loginWindow = window.open(
-      url,
-      "WeChatLogin",
-      `width=${width},height=${height},left=${left},top=${top}`,
-    );
-
-    // Listen for login success message
-    window.addEventListener("message", async (event) => {
-      if (event.data.type === "wechat-login-success") {
-        loginWindow?.close();
-        isAuthenticated.value = true;
-        userInfo.value = event.data.user;
-      }
-    });
+    await user.login();
   } catch (error) {
     console.error("WeChat login failed:", error);
   }
 };
-const router = useRouter();
+
 </script>
 
 <template>
   <div style="text-align: center">
-    <div v-if="!isAuthenticated">
+    <div v-if="!user.isAuthenticated">
       <el-card class="login-box">
         <h2>微信登录</h2>
         <img
@@ -61,15 +32,8 @@ const router = useRouter();
     </div>
     <div v-else>
       <el-card class="select-box">
-        <h2>你好, {{ userInfo?.nickname }}. 请选择采访模式</h2>
-        <el-button
-          class="form-button"
-          @click="router.push(`/manual/${userInfo.openid}`)"
-          >manual</el-button
-        >
-        <el-button
-          class="form-button"
-          @click="router.push(`/auto/${userInfo.openid}`)"
+        <h2>你好, {{ user.userInfo?.nickname }}. 请点击开始采访</h2>
+        <el-button class="form-button" @click="router.push(`/auto`)"
           >auto</el-button
         >
       </el-card>

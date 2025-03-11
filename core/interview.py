@@ -204,13 +204,13 @@ class InterviewManager:
             ]
         return l
 
-    def load_data(self, user_id: int) -> InterviewData:
+    def load_data(self, user_id: str) -> InterviewData:
         return self.storage.load(user_id)
 
     def save_data(self, data: InterviewData):
         self.storage.save(data)
 
-    def create_data(self, user_id: int) -> InterviewData:
+    def create_data(self, user_id: str) -> InterviewData:
         """
         创建并初始化一个新的访谈数据对象。
         """
@@ -229,7 +229,7 @@ class InterviewManager:
         self.storage.save(data)
         return data
 
-    def exists(self, user_id: int) -> bool:
+    def exists(self, user_id: str) -> bool:
         """
         检查指定user_id的访谈数据是否存在。
         """

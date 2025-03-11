@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from ..llm import ChatMessage
+from .chat_message import ChatMessage
 from .audio_message import AudioMessage
 
 

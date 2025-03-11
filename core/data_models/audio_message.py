@@ -1,4 +1,4 @@
-from ..llm import ChatResponse, ChatMessage
+from .chat_message import ChatMessage
 from typing import List
 
 
