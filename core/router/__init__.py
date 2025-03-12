@@ -41,8 +41,8 @@ def timeHandler():
     while True:
         for key, item in session_manager.session.items():
             logger.debug("run session: %s" % key)
-            if "im" in item:
-                im: InterviewManager = item["im"]
+            if "chat" in item:
+                im: InterviewManager = item["chat"]
                 im.check_llm_message(chat)
                 if im.judge(chat):
                     im.next()
