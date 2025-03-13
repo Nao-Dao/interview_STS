@@ -3,6 +3,7 @@ import threading
 
 __all__ = ["generate_snowflake_id"]
 
+
 class SnowflakeIDGenerator:
     def __init__(self, machine_id: int):
         """
@@ -74,10 +75,13 @@ class SnowflakeIDGenerator:
             self.last_timestamp = timestamp
 
             # 生成ID
-            id = ((timestamp - self.epoch) << self.timestamp_shift) | \
-                 (self.machine_id << self.machine_id_shift) | \
-                 self.sequence
+            id = (
+                ((timestamp - self.epoch) << self.timestamp_shift)
+                | (self.machine_id << self.machine_id_shift)
+                | self.sequence
+            )
             return id
+
 
 def generate_snowflake_id():
     return SnowflakeIDGenerator(0).generate_id()

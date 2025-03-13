@@ -3,20 +3,25 @@ import subprocess
 import soundfile as sf
 import numpy as np
 from io import BytesIO
+import ffmpeg
+
 
 ### modify from https://github.com/RVC-Boss/GPT-SoVITS/pull/894/files
-def pack_ogg(io_buffer:BytesIO, data:np.ndarray, rate:int):
-    with sf.SoundFile(io_buffer, mode='w', samplerate=rate, channels=1, format='ogg') as audio_file:
+def pack_ogg(io_buffer: BytesIO, data: np.ndarray, rate: int):
+    with sf.SoundFile(
+        io_buffer, mode="w", samplerate=rate, channels=1, format="ogg"
+    ) as audio_file:
         audio_file.write(data)
     return io_buffer
 
-def pack_raw(io_buffer:BytesIO, data:np.ndarray, rate:int):
+def pack_raw(io_buffer: BytesIO, data: np.ndarray, rate: int):
     io_buffer.write(data.tobytes())
     return io_buffer
 
-def pack_wav(io_buffer:BytesIO, data:np.ndarray, rate:int):
+
+def pack_wav(io_buffer: BytesIO, data: np.ndarray, rate: int):
     io_buffer = BytesIO()
-    sf.write(io_buffer, data, rate, format='wav')
+    sf.write(io_buffer, data, rate, format="wav")
     return io_buffer
 
 def pack_aac(io_buffer:BytesIO, data:np.ndarray, rate:int):
@@ -36,7 +41,8 @@ def pack_aac(io_buffer:BytesIO, data:np.ndarray, rate:int):
     io_buffer.write(out)
     return io_buffer
 
-def pack_audio(io_buffer:BytesIO, data:np.ndarray, rate:int, media_type:str):
+
+def pack_audio(io_buffer: BytesIO, data: np.ndarray, rate: int, media_type: str):
     if media_type == "ogg":
         io_buffer = pack_ogg(io_buffer, data, rate)
     elif media_type == "aac":
@@ -63,7 +69,6 @@ def wave_header_chunk(frame_input=b"", channels=1, sample_width=2, sample_rate=3
     wav_buf.seek(0)
     return wav_buf.read()
 
-import ffmpeg
 def webm2wav(webm: bytes):
     process = (
         ffmpeg

@@ -4,10 +4,11 @@ LLM聊天管理
 import os
 from logging import getLogger
 logger = getLogger(__name__)
-from ..llm import Chat, InterviewManager
+from ..interview import InterviewManager
 
-module = __import__(f"core.llm.{os.getenv('LLM', 'chatgpt')}", globals(), locals(), ["chat"])
-chat: Chat = module.chat
+from .utils import cache, get_llm_module
+
+chat = get_llm_module().chat
 
 class SessionManager():
     def __init__(self) -> None:
@@ -53,3 +54,4 @@ thread = threading.Thread(
     daemon=True
 )
 thread.start()
+

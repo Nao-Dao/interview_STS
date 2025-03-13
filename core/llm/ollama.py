@@ -10,11 +10,11 @@ from . import ChatResponse, ChatMessage
 URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
+
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
-    resp = requests.post(f"{URL}/api/chat", json = {
-        "model": MODEL,
-        "messages": messages
-    }, stream=True)
+    resp = requests.post(
+        f"{URL}/api/chat", json={"model": MODEL, "messages": messages}, stream=True
+    )
 
     # 因为用流式处理，需要进行断句。当一句完成后再返回。
     # 最后将整个句子保存
@@ -22,11 +22,11 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
     content = []
     for chunk in resp.iter_content(1024):
         data = json.loads(chunk.decode())
-        c = data['message']['content']
+        c = data["message"]["content"]
         if c is None or c == "":
             continue
         global_content.append(c)
-        yield ChatResponse(type = "char", content = c)
+        yield ChatResponse(type="char", content=c)
 
         pattern = re.search(r"[,\.!\?，。？！、]", c)
         if pattern and len("".join(content).strip()) > 10:
@@ -44,12 +44,11 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
                 [stext, etext] = c.split(c[spos])
                 msg = "".join(content + [f"{stext}{c[spos]}"])
                 content = [etext]
-            yield ChatResponse(type = "sentence", content = msg)
+            yield ChatResponse(type="sentence", content=msg)
         else:
             content.append(c)
     if len(content):
         # 还有剩下的内容
-        yield ChatResponse(type = "sentence", content = "".join(content))
+        yield ChatResponse(type="sentence", content="".join(content))
 
-    yield ChatResponse(type = "finish", content = "".join(global_content))
-
+    yield ChatResponse(type="finish", content="".join(global_content))

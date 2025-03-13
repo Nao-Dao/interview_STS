@@ -1,17 +1,20 @@
 import sys
+
 sys.path.append("./")
 
 import time
 import unittest
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 class SpeedTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._log = ""
         return super().setUpClass()
-    
+
     @classmethod
     def tearDownClass(cls) -> None:
         print(cls._log)
@@ -32,6 +35,7 @@ class SpeedTest(unittest.TestCase):
     @unittest.skip("stop")
     def test_ollama(self):
         from core.llm import Chat
+
         module = __import__(f"core.llm.ollama", globals(), locals(), ["chat"])
         chat: Chat = module.chat
 
@@ -49,6 +53,7 @@ class SpeedTest(unittest.TestCase):
     @unittest.skip("stop")
     def test_chatgpt(self):
         from core.llm import Chat
+
         module = __import__(f"core.llm.chatgpt", globals(), locals(), ["chat"])
         chat: Chat = module.chat
 
@@ -66,6 +71,7 @@ class SpeedTest(unittest.TestCase):
     # @unittest.skip("stop")
     def test_sovits(self):
         from model.sovits import stream_io
+
         def generate_text():
             yield "你好"
             yield "接下来我要说一个很长很长的话"
@@ -81,6 +87,7 @@ class SpeedTest(unittest.TestCase):
     # @unittest.skip("stop")
     def test_cosyvoice(self):
         from model.cosy import stream_io
+
         def generate_text():
             yield "你好"
             yield "接下来我要说一个很长很长的话"
@@ -96,6 +103,7 @@ class SpeedTest(unittest.TestCase):
     @unittest.skip("stop")
     def test_cosyvoice_i(self):
         from model.cosy import inference_zero_shot
+
         def generate_text():
             yield "你好"
             yield "接下来我要说一个很长很长的话"
@@ -107,10 +115,10 @@ class SpeedTest(unittest.TestCase):
             for item in model_output:
                 self.logger("开始音频响应")
 
-
     @unittest.skip("stop")
     def test_cosyvoice_istream(self):
         from model.cosy import inference_zero_shot
+
         def generate_text():
             yield "你好"
             yield "接下来我要说一个很长很长的话"
@@ -121,10 +129,12 @@ class SpeedTest(unittest.TestCase):
         for item in model_output:
             self.logger("开始音频响应")
 
+
 class CustomRunner(unittest.TextTestRunner):
     def run(self, test: unittest.TestSuite | unittest.TestCase):
         result = super().run(test)
         return result
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=CustomRunner())

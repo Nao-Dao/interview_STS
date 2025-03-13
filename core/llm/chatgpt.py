@@ -10,9 +10,10 @@ from . import ChatResponse, ChatMessage
 logger = logging.getLogger(__name__)
 
 client = openai.OpenAI(
-    base_url = os.getenv("OPENAI_BASE_URL", None),
-    api_key  = os.getenv("OPENAI_API_KEY", None)
+    base_url=os.getenv("OPENAI_BASE_URL", None),
+    api_key=os.getenv("OPENAI_API_KEY", None),
 )
+
 
 def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
     response = client.chat.completions.create(
@@ -33,7 +34,7 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
         if c is None:
             continue
         global_content.append(c)
-        yield ChatResponse(type = "char", content = c)
+        yield ChatResponse(type="char", content=c)
 
         pattern = re.search(r"[,\.!\?，。？！、]", c)
         if pattern and len("".join(content).strip()) > 10:
@@ -51,7 +52,7 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
                 [stext, etext] = c.split(c[spos])
                 msg = "".join(content + [f"{stext}{c[spos]}"])
                 content = [etext]
-            yield ChatResponse(type = "sentence", content = msg)
+            yield ChatResponse(type="sentence", content=msg)
         else:
             content.append(c)
     if len(content):
@@ -59,6 +60,3 @@ def chat(messages: list[ChatMessage]) -> Generator[ChatResponse]:
         yield ChatResponse(type = "sentence", content = "".join(content))
     logger.debug("stop llm generate message")
     yield ChatResponse(type = "finish", content = "".join(global_content))
-
-
-
