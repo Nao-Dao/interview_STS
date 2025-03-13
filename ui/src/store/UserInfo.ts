@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { useSystemConfig } from "./Config";
 
 interface UserState {
   isAuthenticated: boolean;
@@ -16,8 +15,7 @@ export const useUserInfo = defineStore("user-info", {
   actions: {
     async login() {
       try {
-        const config = useSystemConfig();
-        const authResponse = await fetch(config.getURL("/api/auth/wechat"));
+        const authResponse = await fetch("/api/auth/wechat");
         if (!authResponse.ok) {
           throw new Error("Failed to get WeChat auth URL");
         }
